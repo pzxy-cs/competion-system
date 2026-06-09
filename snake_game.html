@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇游戏</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #282c34;
+            margin: 0;
+            font-family: 'Press Start 2P', cursive;
+            color: #eee;
+            flex-direction: column;
+        }
+        canvas {
+            background-color: #1a1a1a;
+            border: 5px solid #61dafb;
+            display: block;
+        }
+        #game-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #61dafb;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        #score {
+            font-size: 1.5em;
+            margin-top: 10px;
+        }
+        button {
+            background-color: #61dafb;
+            color: #282c34;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 20px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #21a1f1;
+        }
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #eee;
+            font-size: 2em;
+            text-align: center;
+            z-index: 100;
+            display: none; /* Hidden by default */
+        }
+        #game-over-screen p {
+            margin: 10px 0;
+        }
+        #game-over-screen button {
+            font-size: 1.2em;
+            padding: 15px 30px;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <h1>贪吃蛇</h1>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div id="score">得分: 0</div>
+        <button id="startButton">开始游戏</button>
+    </div>
+
+    <div id="game-over-screen">
+        <p>游戏结束!</p>
+        <p>你的得分: <span id="final-score">0</span></p>
+        <button id="restartButton">重新开始</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const startButton = document.getElementById('startButton');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const restartButton = document.getElementById('restartButton');
+
+        const gridSize = 20;
+        let snake = [{ x: 10, y: 10 }];
+        let food = {};
+        let dx = 0;
+        let dy = 0;
+        let score = 0;
+        let gameInterval;
+        let gameSpeed = 150; // Milliseconds
+        let isGameOver = false;
+
+        function generateFood() {
+            food = {
+                x: Math.floor(Math.random() * (canvas.width / gridSize)),
+                y: Math.floor(Math.random() * (canvas.height / gridSize))
+            };
+            // Ensure food does not spawn on the snake
+            for (let i = 0; i < snake.length; i++) {
+                if (food.x === snake[i].x && food.y === snake[i].y) {
+                    generateFood();
+                    return;
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw snake
+            ctx.fillStyle = '#4CAF50';
+            snake.forEach(segment => {
+                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+            });
+
+            // Draw food
+            ctx.fillStyle = '#FFC107';
+            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize, gridSize);
+        }
+
+        function update() {
+            if (isGameOver) return;
+
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+
+            // Check for collision with walls
+            if (head.x < 0 || head.x >= canvas.width / gridSize ||
+                head.y < 0 || head.y >= canvas.height / gridSize) {
+                endGame();
+                return;
+            }
+
+            // Check for collision with self
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    endGame();
+                    return;
+                }
+            }
+
+            snake.unshift(head);
+
+            // Check for food eaten
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                scoreDisplay.textContent = `得分: ${score}`;
+                generateFood();
+                // Increase speed slightly
+                gameSpeed = Math.max(50, gameSpeed - 5); // Minimum speed of 50ms
+                clearInterval(gameInterval);
+                gameInterval = setInterval(update, gameSpeed);
+            } else {
+                snake.pop();
+            }
+
+            draw();
+        }
+
+        function changeDirection(event) {
+            if (isGameOver) return;
+
+            const keyPressed = event.keyCode;
+            const goingUp = dy === -1;
+            const goingDown = dy === 1;
+            const goingLeft = dx === -1;
+            const goingRight = dx === 1;
+
+            if (keyPressed === 37 && !goingRight) { // Left arrow
+                dx = -1;
+                dy = 0;
+            }
+            if (keyPressed === 38 && !goingDown) { // Up arrow
+                dx = 0;
+                dy = -1;
+            }
+            if (keyPressed === 39 && !goingLeft) { // Right arrow
+                dx = 1;
+                dy = 0;
+            }
+            if (keyPressed === 40 && !goingUp) { // Down arrow
+                dx = 0;
+                dy = 1;
+            }
+        }
+
+        function startGame() {
+            snake = [{ x: 10, y: 10 }];
+            dx = 0;
+            dy = 0;
+            score = 0;
+            scoreDisplay.textContent = `得分: ${score}`;
+            gameSpeed = 150;
+            isGameOver = false;
+            gameOverScreen.style.display = 'none';
+            startButton.style.display = 'none'; // Hide start button
+
+            generateFood();
+            draw();
+            clearInterval(gameInterval);
+            gameInterval = setInterval(update, gameSpeed);
+            document.addEventListener('keydown', changeDirection);
+        }
+
+        function endGame() {
+            isGameOver = true;
+            clearInterval(gameInterval);
+            document.removeEventListener('keydown', changeDirection);
+            finalScoreDisplay.textContent = score;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+
+        // Initial state before game starts
+        draw();
+    </script>
+</body>
+</html>
